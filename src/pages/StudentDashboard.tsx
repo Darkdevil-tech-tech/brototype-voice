@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Plus, MessageSquare, FileText, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { LogOut, Plus, MessageSquare, FileText, Clock, CheckCircle, AlertCircle, Upload, Paperclip, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ type Complaint = {
   description: string;
   status: string;
   admin_remarks: string | null;
+  file_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,6 +42,8 @@ const StudentDashboard = () => {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -79,6 +82,46 @@ const StudentDashboard = () => {
     setLoading(false);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file size (10MB max)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!file || !user) return null;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('complaint-files')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('complaint-files')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("File upload error:", error);
+      toast.error("Failed to upload file");
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -86,11 +129,22 @@ const StudentDashboard = () => {
     try {
       const validated = complaintSchema.parse({ title, category, description });
 
+      // Upload file if present
+      let fileUrl = null;
+      if (file) {
+        fileUrl = await uploadFile();
+        if (!fileUrl) {
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const { error } = await supabase.from("complaints").insert({
         user_id: user!.id,
         title: validated.title,
         category: validated.category,
         description: validated.description,
+        file_url: fileUrl,
       });
 
       if (error) throw error;
@@ -99,6 +153,7 @@ const StudentDashboard = () => {
       setTitle("");
       setCategory("");
       setDescription("");
+      setFile(null);
       setOpen(false);
       fetchComplaints();
     } catch (error) {
@@ -269,12 +324,33 @@ const StudentDashboard = () => {
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="file">Attachment (Optional)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="file"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx"
+                          className="cursor-pointer"
+                        />
+                        {file && (
+                          <Badge variant="secondary" className="shrink-0">
+                            <Paperclip className="mr-1 h-3 w-3" />
+                            {file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Max file size: 10MB. Supported: Images, PDF, Word documents
+                      </p>
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={submitting} className="bg-accent hover:bg-accent-light">
-                        {submitting ? "Submitting..." : "Submit Complaint"}
+                      <Button type="submit" disabled={submitting || uploading} className="bg-accent hover:bg-accent-light">
+                        {uploading ? "Uploading..." : submitting ? "Submitting..." : "Submit Complaint"}
                       </Button>
                     </div>
                   </form>
@@ -320,6 +396,23 @@ const StudentDashboard = () => {
                     </CardHeader>
                     <CardContent>
                       <p className="mb-4 text-sm text-muted-foreground">{complaint.description}</p>
+                      {complaint.file_url && (
+                        <div className="mb-4 rounded-lg bg-secondary border p-3">
+                          <div className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Attachment</span>
+                          </div>
+                          <a
+                            href={complaint.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
+                          >
+                            <Download className="h-3 w-3" />
+                            View/Download File
+                          </a>
+                        </div>
+                      )}
                       {complaint.admin_remarks && (
                         <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
                           <p className="mb-1 text-sm font-semibold text-blue-900">Admin Response:</p>

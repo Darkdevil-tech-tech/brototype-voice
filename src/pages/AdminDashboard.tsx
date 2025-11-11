@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, MessageSquare, Filter, FileText, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { LogOut, MessageSquare, Filter, FileText, Clock, CheckCircle, AlertCircle, Paperclip, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ type Complaint = {
   description: string;
   status: "Pending" | "Under Review" | "Resolved";
   admin_remarks: string | null;
+  file_url: string | null;
   created_at: string;
   user_id: string;
   profiles: {
@@ -350,6 +351,23 @@ const AdminDashboard = () => {
               <div className="rounded-lg bg-muted p-4">
                 <h4 className="mb-2 font-semibold">{selectedComplaint.title}</h4>
                 <p className="mb-2 text-sm text-muted-foreground">{selectedComplaint.description}</p>
+                {selectedComplaint.file_url && (
+                  <div className="mb-2 rounded-lg bg-background border p-3">
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Student Attachment</span>
+                    </div>
+                    <a
+                      href={selectedComplaint.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <Download className="h-3 w-3" />
+                      View/Download File
+                    </a>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Badge variant="secondary">{selectedComplaint.category}</Badge>
                   <Badge variant="outline">{selectedComplaint.profiles?.full_name || "Unknown"}</Badge>
