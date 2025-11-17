@@ -35,17 +35,17 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { signIn, signUp, user, isAdmin: userIsAdmin } = useAuth();
+  const { signIn, signUp, user, isAdmin: userIsAdmin, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       if (userIsAdmin) {
         navigate("/admin/dashboard");
       } else {
         navigate("/student/dashboard");
       }
     }
-  }, [user, userIsAdmin, navigate]);
+  }, [user, userIsAdmin, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
