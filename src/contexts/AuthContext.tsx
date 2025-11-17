@@ -39,9 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Check admin role after auth state updates
         if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
+          checkAdminRole(session.user.id);
         } else {
           setIsAdmin(false);
         }
@@ -54,9 +52,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        checkAdminRole(session.user.id);
+        checkAdminRole(session.user.id).then(() => {
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
