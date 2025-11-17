@@ -34,14 +34,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        setLoading(true);
         setSession(session);
         setUser(session?.user ?? null);
         
         // Check admin role after auth state updates
         if (session?.user) {
-          checkAdminRole(session.user.id);
+          checkAdminRole(session.user.id).finally(() => {
+            setLoading(false);
+          });
         } else {
           setIsAdmin(false);
+          setLoading(false);
         }
       }
     );
@@ -52,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        checkAdminRole(session.user.id).then(() => {
+        checkAdminRole(session.user.id).finally(() => {
           setLoading(false);
         });
       } else {
@@ -65,7 +69,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkAdminRole = async (userId: string) => {
     try {
-      console.log("Checking admin role for user:", userId);
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
@@ -73,12 +76,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq("role", "admin")
         .maybeSingle();
 
-      console.log("Admin role check result:", { data, error });
       if (!error && data) {
-        console.log("Setting isAdmin to TRUE");
         setIsAdmin(true);
       } else {
-        console.log("Setting isAdmin to FALSE");
         setIsAdmin(false);
       }
     } catch (error) {

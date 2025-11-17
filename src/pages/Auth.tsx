@@ -38,13 +38,10 @@ const Auth = () => {
   const { signIn, signUp, user, isAdmin: userIsAdmin } = useAuth();
 
   useEffect(() => {
-    console.log("Auth redirect check - user:", user?.email, "isAdmin:", userIsAdmin);
     if (user) {
       if (userIsAdmin) {
-        console.log("Redirecting to admin dashboard");
         navigate("/admin/dashboard");
       } else {
-        console.log("Redirecting to student dashboard");
         navigate("/student/dashboard");
       }
     }
